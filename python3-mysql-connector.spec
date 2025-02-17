@@ -13,7 +13,7 @@ Name:		python3-%{pname}
 # check documentation to see which version is GA (we don't want devel releases)
 # https://dev.mysql.com/downloads/connector/python/
 Version:	9.2.0
-Release:	1
+Release:	2
 License:	GPL v2
 Group:		Libraries/Python
 Source0:	http://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python-%{version}-src.tar.gz
@@ -37,15 +37,10 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
 MySQL Connector/Python is implementing the MySQL Client/Server
-protocol completely in Python. No MySQL libraries are needed, and no
-compilation is necessary to run this Python DB API v2.0 compliant
-driver.
+protocol.
 
 %description -l pl.UTF-8
-MySQL Connector/Python to protokół klient-serwer MySQL-a
-zaimplementowany całkowicie w Pythonie. Do uruchomienia tego
-sterownika, zgodnego z DB API v2.0 Pythona, nie są potrzebne
-biblioteki MySQL-a, ani żadna kompilacja.
+MySQL Connector/Python to protokół klient-serwer MySQL-a.
 
 %prep
 %setup -q -n mysql-connector-python-%{version}-src
@@ -55,9 +50,7 @@ biblioteki MySQL-a, ani żadna kompilacja.
 %build
 export MYSQL_CAPI=%{_bindir}/mysql_config%{mysql_ver}
 
-for t in mysql mysqlx; do
-echo "*** Doing ${t}-connector-python"
-cd ${t}-connector-python
+cd mysql-connector-python
 
 %py3_build
 %if %{with tests}
@@ -71,7 +64,6 @@ export PYTHONPATH="$(pwd)/$(echo build-3/lib*)"
 %endif
 
 cd ..
-done
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -87,12 +79,9 @@ export MYSQLXPB_PROTOBUF_LIB_DIR=%{_libdir}
 
 export MYSQL_CAPI=%{_bindir}/mysql_config%{mysql_ver}
 
-for t in mysql mysqlx; do
-echo "*** Doing ${t}-connector-python"
-cd ${t}-connector-python
+cd mysql-connector-python
 %py3_install
 cd ..
-done
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -101,7 +90,5 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %doc CHANGES.txt README.txt
 %attr(755,root,root) %{py3_sitedir}/_mysql_connector.cpython-*.so
-%attr(755,root,root) %{py3_sitedir}/_mysqlxpb.cpython-*.so
 %{py3_sitedir}/mysql*.egg-info
 %{py3_sitedir}/mysql
-%{py3_sitedir}/mysqlx
