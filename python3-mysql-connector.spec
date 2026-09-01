@@ -5,7 +5,7 @@
 %bcond_with	tests		# build with tests (requires mysql server)
 
 %ifarch %{x8664}
-%define		mysql_ver	8.4
+%define		mysql_ver	9.7
 %else
 %define		mysql_ver	8.0
 %endif
@@ -17,7 +17,7 @@ Name:		python3-%{pname}
 # check documentation to see which version is GA (we don't want devel releases)
 # https://dev.mysql.com/downloads/connector/python/
 Version:	9.7.0
-Release:	1
+Release:	2
 License:	GPL v2
 Group:		Libraries/Python
 Source0:	http://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python-%{version}-src.tar.gz
@@ -25,6 +25,7 @@ Source0:	http://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python-
 #Source0:	https://pypi.debian.net/mysql-connector-python/mysql-connector-python-%{version}.tar.gz
 Patch0:		force-capi.patch
 Patch1:		tests.patch
+Patch2:		plugin-dir.patch
 URL:		http://dev.mysql.com/doc/connector-python/en/
 BuildRequires:	mysql%{mysql_ver}-devel
 BuildRequires:	protobuf-devel >= 3.0.0
@@ -50,6 +51,7 @@ MySQL Connector/Python to protokół klient-serwer MySQL-a.
 %setup -q -n mysql-connector-python-%{version}-src
 %patch -P0 -p1
 %patch -P1 -p1
+%patch -P2 -p1
 
 %build
 export MYSQL_CAPI=%{_bindir}/mysql_config%{mysql_ver}

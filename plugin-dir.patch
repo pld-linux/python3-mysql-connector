@@ -1,0 +1,57 @@
+MySQL 9.x turned the client-side mysql_native_password into a loadable plugin,
+so libmysqlclient has to find it in its own plugin directory. Upstream instead
+forces MYSQL_PLUGIN_DIR to a hardcoded /usr/lib64/mysql/plugin, falling back to
+/usr/lib/mysql/plugin - PLD installs plugins versioned, as
+/usr/lib64/mysqlX.Y/plugin, so neither path exists and every connection using
+that auth method fails. The override is only meaningful for the vendor plugins
+bundled in upstream's own wheels, which this build does not ship, so leave the
+directory unset and let libmysqlclient use the one it was built with.
+
+The C extension made that impossible: it defaulted the directory to "." and
+called mysql_options() unconditionally. "." is a plugin search path in the
+working directory - anyone who can write to the cwd of a process linked against
+libmysqlclient can have a .so of their choosing dlopen()ed - so drop that
+default too. An explicit plugin_dir="." still works if someone really wants it.
+
+--- a/mysql-connector-python/lib/mysql/connector/connection_cext.py
++++ b/mysql-connector-python/lib/mysql/connector/connection_cext.py
+@@ -126,13 +126,10 @@
+             "plugin",
+         )
+         if platform.system() == "Linux":
+-            # Use the authentication plugins from system if they aren't bundled
++            # nothing bundled: leave it unset so libmysqlclient looks in the
++            # plugin directory it was built with
+             if not os.path.exists(self._plugin_dir):
+-                self._plugin_dir = (
+-                    "/usr/lib64/mysql/plugin"
+-                    if os.path.exists("/usr/lib64/mysql/plugin")
+-                    else "/usr/lib/mysql/plugin"
+-                )
++                self._plugin_dir = ""
+ 
+         self.converter: Optional[MySQLConverter] = None
+         super().__init__()
+--- a/mysql-connector-python/src/mysql_capi.c
++++ b/mysql-connector-python/src/mysql_capi.c
+@@ -368,7 +368,7 @@
+     self->fields = NULL;
+     self->use_unicode = 1;
+     self->auth_plugin = PyUnicode_FromString("");
+-    self->plugin_dir = PyUnicode_FromString(".");
++    self->plugin_dir = PyUnicode_FromString("");
+     self->converter_str_fallback = Py_False;
+ 
+     return (PyObject *)self;
+@@ -1267,7 +1267,10 @@
+     }
+ 
+     plugin_dir = PyUnicode_AsUTF8(self->plugin_dir);
+-    mysql_options(&self->session, MYSQL_PLUGIN_DIR, plugin_dir);
++    /* unset: keep the plugin directory libmysqlclient was built with */
++    if (plugin_dir && *plugin_dir) {
++        mysql_options(&self->session, MYSQL_PLUGIN_DIR, plugin_dir);
++    }
+     mysql_options(&self->session, MYSQL_OPT_PROTOCOL, (char *)&protocol);
+     mysql_options(&self->session, MYSQL_SET_CHARSET_NAME, PyBytes_AsString(charset_name));
+ 
