@@ -1,0 +1,82 @@
+The test server harness never reaps the mysqld it spawns, and reads liveness
+off the pid file. Both go wrong at shutdown.
+
+check_running() resolves a pid and calls os.kill(pid, 0). mysqld is a child of
+the test process, so once it exits it stays in the process table as a zombie
+and keeps answering that signal - the server reads as running long after it is
+gone. stop() therefore always exhausts its retries and reports "Failed
+stopping MySQL server" for a server that stopped on the first SIGTERM, and
+remove() then declines to clean up, or races a datadir it believes is still in
+use. Polling the child reaps it and makes the answer true.
+
+The pid file is no better as a "has it exited" signal in the other direction:
+clean_up() calls delete_pid_file() one step before free_connection_acceptors(),
+so the listening port and the unix socket are still bound at the moment the
+file disappears. cmd_shutdown() followed by wait_down() returns while the old
+server still owns the socket, and the restart in BugOra17422299.ensure_up()
+spawns a replacement that cannot bind, exits, and never writes a pid file of
+its own; start() then spends its 50 second poll waiting for that file and gives
+up in get_pid() with sys.exit(1). Waiting on the child covers this exactly,
+with no dependency on pid file timing.
+
+stop() also assigns tries = -1 at the bottom of its retry loop rather than
+decrementing it, so the five attempts it sets up are really one.
+
+--- a/mysql-connector-python/tests/mysqld.py	2026-09-01 17:27:01.041161734 +0200
++++ b/mysql-connector-python/tests/mysqld.py	2026-09-01 17:41:48.880486103 +0200
+@@ -664,12 +664,33 @@
+             LOGGER.error("Failed to write config file {0}".format(ex))
+             sys.exit(1)
+ 
++    def wait_exit(self, timeout=60):
++        """Wait for the mysqld process to exit
++
++        mysqld deletes its pid file before it closes its listening sockets, so
++        the pid file says nothing about whether the process is gone. Reap it
++        instead.
++
++        Returns True when it exited, False on timeout.
++        """
++        if self._process is None:
++            return True
++        try:
++            self._process.wait(timeout=timeout)
++        except subprocess.TimeoutExpired:
++            return False
++        self._process = None
++        return True
++
+     def start(self, **kwargs):
+         LOGGER.debug("Attempting to start MySQL server %s", self.name)
+         if self.check_running():
+             LOGGER.error("MySQL server '{name}' already running".format(name=self.name))
+             return
+ 
++        # A replacement started before the previous mysqld released its
++        # listening socket cannot bind, and never writes a pid file.
++        self.wait_exit()
+         self.update_config(**kwargs)
+         try:
+             self._start_server()
+@@ -740,7 +761,7 @@
+                         "(pid={pid})".format(pid=pid, name=self._name)
+                     )
+                     return True
+-            tries = -1
++            tries -= 1
+ 
+         LOGGER.error(
+             "Failed stopping MySQL server '{name}' (pid={pid})"
+@@ -770,6 +791,12 @@
+ 
+         Returns True or False.
+         """
++        # Reap first: an exited child stays in the process table as a zombie
++        # and keeps answering os.kill(pid, 0), so without this the server
++        # reads as running long after it is gone.
++        if self._process is not None and self._process.poll() is not None:
++            self._process = None
++
+         pid = pid or get_pid(self._pid_file)
+         if pid:
+             LOGGER.debug("Checking PID %d", pid)

@@ -27,6 +27,8 @@ Patch0:		force-capi.patch
 Patch1:		tests.patch
 Patch2:		plugin-dir.patch
 Patch3:		tests-config-leak.patch
+Patch4:		tests-webauthn-probe.patch
+Patch5:		tests-restart-race.patch
 URL:		http://dev.mysql.com/doc/connector-python/en/
 BuildRequires:	mysql%{mysql_ver}-devel
 BuildRequires:	protobuf-devel >= 3.0.0
@@ -55,6 +57,8 @@ MySQL Connector/Python to protokół klient-serwer MySQL-a.
 %patch -P1 -p1
 %patch -P2 -p1
 %patch -P3 -p1
+%patch -P4 -p1
+%patch -P5 -p1
 
 %build
 export MYSQL_CAPI=%{_bindir}/mysql_config%{mysql_ver}
