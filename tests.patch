@@ -1,6 +1,25 @@
---- mysql-connector-python-8.0.33-src/mysql-connector-python/tests/mysqld.py~	2023-03-30 12:58:04.000000000 +0200
-+++ mysql-connector-python-8.0.33-src/mysql-connector-python/tests/mysqld.py	2024-03-21 13:15:47.909993896 +0100
-@@ -181,30 +181,7 @@ class MySQLServerBase:
+Do not walk the whole basedir looking for mysqld - the location is known, and
+PLD installs the server under a versioned name (/usr/sbin/mysqld9.7 and such),
+which the upstream search would not match anyway. The spec passes the exact
+name via MYSQLD_EXEC so the suite runs against the same server line the
+connector is built for.
+
+--- a/mysql-connector-python/tests/mysqld.py
++++ b/mysql-connector-python/tests/mysqld.py
+@@ -56,8 +56,10 @@
+ 
+ LOGGER = logging.getLogger(tests.LOGGER_NAME)
+ 
+-# MySQL Server executable name
+-EXEC_MYSQLD = "mysqld.exe" if os.name == "nt" else "mysqld"
++# MySQL Server executable name, overridable where it is installed versioned
++EXEC_MYSQLD = os.environ.get("MYSQLD_EXEC") or (
++    "mysqld.exe" if os.name == "nt" else "mysqld"
++)
+ 
+ # MySQL client executable name
+ EXEC_MYSQL = "mysql.exe" if os.name == "nt" else "mysql"
+@@ -181,30 +183,7 @@
          Raises MySQLBootstrapError when something fails.
          """
  

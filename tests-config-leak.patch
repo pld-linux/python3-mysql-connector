@@ -1,0 +1,28 @@
+The testcases all do "config = self.config" and then mutate it, so the last
+read_timeout set by a testcase leaks into the connection tearDown opens. Its
+DROP TABLE then runs under that timeout, on a table the write_timeout cases
+fill with 9MB blobs, and fails whenever the machine is loaded enough for the
+drop to outlast it. Hand out a copy instead.
+
+--- a/mysql-connector-python/tests/qa/test_qa_timeout.py
++++ b/mysql-connector-python/tests/qa/test_qa_timeout.py
+@@ -59,10 +59,17 @@
+         self.table_name = "test_timeouts"
+         self.stmt_for_write_TLE = f"INSERT INTO {self.table_name} (my_blob) VALUES ('{self.test_values[0]}')"
+         self.multi_stmt_write_TLE = f"SELECT 'abcd';SELECT 123;INSERT INTO {self.table_name} (my_blob) VALUES ('{self.test_values[0]}')"
+-        self.config = tests.get_mysql_config()
+-        self.config["unix_socket"] = None
++        self._config = tests.get_mysql_config()
++        self._config["unix_socket"] = None
+         super().__init__(methodName)
+ 
++    @property
++    def config(self):
++        # every testcase mutates what it gets back, so hand out a copy;
++        # otherwise per-test options such as read_timeout leak into the
++        # connections setUp/tearDown make
++        return dict(self._config)
++
+     def setUp(self):
+         config = self.config
+         config["use_pure"] = True

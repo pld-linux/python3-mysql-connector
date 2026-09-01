@@ -2,7 +2,7 @@
 # - c extension build is done in install phase (http://bugs.mysql.com/bug.php?id=78621)
 #
 # Conditional build:
-%bcond_with	tests		# build with tests (requires mysql server)
+%bcond_without	tests		# build with tests (requires mysql server)
 
 %ifarch %{x8664}
 %define		mysql_ver	9.7
@@ -26,6 +26,7 @@ Source0:	http://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python-
 Patch0:		force-capi.patch
 Patch1:		tests.patch
 Patch2:		plugin-dir.patch
+Patch3:		tests-config-leak.patch
 URL:		http://dev.mysql.com/doc/connector-python/en/
 BuildRequires:	mysql%{mysql_ver}-devel
 BuildRequires:	protobuf-devel >= 3.0.0
@@ -35,7 +36,8 @@ BuildRequires:	python3-setuptools
 BuildRequires:	rpm-pythonprov
 BuildRequires:	rpmbuild(macros) >= 1.714
 %if %{with tests}
-BuildRequires:	mysql
+BuildRequires:	mysql%{mysql_ver}
+BuildRequires:	openssl-tools
 %endif
 Requires:	python3-modules
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -52,6 +54,7 @@ MySQL Connector/Python to protokół klient-serwer MySQL-a.
 %patch -P0 -p1
 %patch -P1 -p1
 %patch -P2 -p1
+%patch -P3 -p1
 
 %build
 export MYSQL_CAPI=%{_bindir}/mysql_config%{mysql_ver}
@@ -61,12 +64,17 @@ cd mysql-connector-python
 %py3_build
 %if %{with tests}
 export PYTHONPATH="$(pwd)/$(echo build-3/lib*)"
+export MYSQLD_EXEC=mysqld%{mysql_ver}
+# test certs are issued for a year, so any older tarball ships expired ones
+sh tests/data/ssl/generate.sh tests/data/ssl
 %{__python3} unittests.py \
 	--verbosity 1 \
-	--keep --stats \
+	--force --stats \
+	--port=33306 \
 	--skip-install \
 	--with-mysql=%{_prefix} \
-	--with-mysql-share=%{_datadir}/mysql
+	--unix-socket=%{tmpdir} \
+	--with-mysql-share=%{_datadir}/mysql%{mysql_ver}
 %endif
 
 cd ..
