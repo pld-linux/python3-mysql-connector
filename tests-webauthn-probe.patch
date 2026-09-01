@@ -1,0 +1,40 @@
+The plugin availability probe only checks that the fido2 package imports, but
+the WebAuthn plugin needs the 1.x API (fido2.cbor.dump_bytes and friends) and
+raises ProgrammingError on a 2.x fido2. Import the plugin itself, the way the
+kerberos probe just above already does, so an unusable fido2 counts as absent
+instead of erroring out the whole testcase.
+
+--- a/mysql-connector-python/tests/test_authentication.py
++++ b/mysql-connector-python/tests/test_authentication.py
+@@ -77,8 +77,13 @@
+ 
+ try:
+     import fido2
+-except ImportError:
++
++    from mysql.connector.plugins.authentication_webauthn_client import (
++        MySQLWebAuthnAuthPlugin,
++    )
++except (ImportError, ProgrammingError):
+     fido2 = None
++    MySQLWebAuthnAuthPlugin = None
+ 
+ try:
+     from mysql.connector.connection_cext import HAVE_CMYSQL, CMySQLConnection
+--- a/mysql-connector-python/tests/test_aio_authentication.py
++++ b/mysql-connector-python/tests/test_aio_authentication.py
+@@ -81,8 +81,13 @@
+ 
+ try:
+     import fido2
+-except ImportError:
++
++    from mysql.connector.plugins.authentication_webauthn_client import (
++        MySQLWebAuthnAuthPlugin,
++    )
++except (ImportError, ProgrammingError):
+     fido2 = None
++    MySQLWebAuthnAuthPlugin = None
+ 
+ try:
+     from mysql.connector.aio.connection_cext import HAVE_CMYSQL, CMySQLConnection
