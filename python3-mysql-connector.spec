@@ -17,7 +17,7 @@ Name:		python3-%{pname}
 # check documentation to see which version is GA (we don't want devel releases)
 # https://dev.mysql.com/downloads/connector/python/
 Version:	9.7.0
-Release:	2
+Release:	3
 License:	GPL v2
 Group:		Libraries/Python
 Source0:	http://cdn.mysql.com/Downloads/Connector-Python/mysql-connector-python-%{version}-src.tar.gz
@@ -29,6 +29,7 @@ Patch2:		plugin-dir.patch
 Patch3:		tests-config-leak.patch
 Patch4:		tests-webauthn-probe.patch
 Patch5:		tests-restart-race.patch
+Patch6:		pre-5.5.3-charset.patch
 URL:		http://dev.mysql.com/doc/connector-python/en/
 BuildRequires:	mysql%{mysql_ver}-devel
 BuildRequires:	protobuf-devel >= 3.0.0
@@ -59,6 +60,7 @@ MySQL Connector/Python to protokół klient-serwer MySQL-a.
 %patch -P3 -p1
 %patch -P4 -p1
 %patch -P5 -p1
+%patch -P6 -p1
 
 %build
 export MYSQL_CAPI=%{_bindir}/mysql_config%{mysql_ver}

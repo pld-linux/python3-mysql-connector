@@ -1,0 +1,56 @@
+diff -urN a/mysql-connector-python/lib/mysql/connector/abstracts.py b/mysql-connector-python/lib/mysql/connector/abstracts.py
+--- a/mysql-connector-python/lib/mysql/connector/abstracts.py	2026-03-26 11:06:51.000000000 +0100
++++ b/mysql-connector-python/lib/mysql/connector/abstracts.py	2026-10-09 17:25:01.356303271 +0200
+@@ -76,6 +76,7 @@
+     CONN_ATTRS_DN,
+     DEFAULT_CONFIGURATION,
+     DEPRECATED_METHOD_WARNING,
++    MYSQL_DEFAULT_CHARSET_ID_50,
+     MYSQL_DEFAULT_CHARSET_ID_57,
+     MYSQL_DEFAULT_CHARSET_ID_80,
+     OPENSSL_CS_NAMES,
+@@ -1348,7 +1349,9 @@
+                 return MYSQL_DEFAULT_CHARSET_ID_57
+ 
+             self.__charset_id = (
+-                MYSQL_DEFAULT_CHARSET_ID_57
++                MYSQL_DEFAULT_CHARSET_ID_50
++                if self._server_version < (5, 5, 3)
++                else MYSQL_DEFAULT_CHARSET_ID_57
+                 if self._server_version < (8, 0)
+                 else MYSQL_DEFAULT_CHARSET_ID_80
+             )
+diff -urN a/mysql-connector-python/lib/mysql/connector/aio/abstracts.py b/mysql-connector-python/lib/mysql/connector/aio/abstracts.py
+--- a/mysql-connector-python/lib/mysql/connector/aio/abstracts.py	2026-03-26 11:06:51.000000000 +0100
++++ b/mysql-connector-python/lib/mysql/connector/aio/abstracts.py	2026-10-09 17:25:01.364380452 +0200
+@@ -84,6 +84,7 @@
+     CONN_ATTRS_DN,
+     DEFAULT_CONFIGURATION,
+     DEPRECATED_METHOD_WARNING,
++    MYSQL_DEFAULT_CHARSET_ID_50,
+     MYSQL_DEFAULT_CHARSET_ID_57,
+     MYSQL_DEFAULT_CHARSET_ID_80,
+     OPENSSL_CS_NAMES,
+@@ -1154,7 +1155,9 @@
+ 
+             self.__charset = charsets.get_by_id(
+                 (
+-                    MYSQL_DEFAULT_CHARSET_ID_57
++                    MYSQL_DEFAULT_CHARSET_ID_50
++                    if self._server_info.version_tuple < (5, 5, 3)
++                    else MYSQL_DEFAULT_CHARSET_ID_57
+                     if self._server_info.version_tuple < (8, 0)
+                     else MYSQL_DEFAULT_CHARSET_ID_80
+                 )
+diff -urN a/mysql-connector-python/lib/mysql/connector/constants.py b/mysql-connector-python/lib/mysql/connector/constants.py
+--- a/mysql-connector-python/lib/mysql/connector/constants.py	2026-03-26 11:06:51.000000000 +0100
++++ b/mysql-connector-python/lib/mysql/connector/constants.py	2026-10-09 17:25:01.317673561 +0200
+@@ -48,6 +48,8 @@
+ """Expected `typecode` when decoding VECTOR values from
+ MySQL (blob) to Python (array.array).
+ """
++# utf8_general_ci; servers before 5.5.3 have no utf8mb4
++MYSQL_DEFAULT_CHARSET_ID_50 = 33
+ MYSQL_DEFAULT_CHARSET_ID_57 = 45
+ MYSQL_DEFAULT_CHARSET_ID_80 = 255
+ 
